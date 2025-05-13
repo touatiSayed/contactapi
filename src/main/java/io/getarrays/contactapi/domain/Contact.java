@@ -20,7 +20,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT;
 @AllArgsConstructor
 @JsonInclude(NON_DEFAULT)
 @Table(name = "contacts")
-public class contact {
+public class Contact {
     @Id
     @UuidGenerator
     @Column(name = "id", unique = true, updatable = false)

@@ -44,6 +44,7 @@ public class ContactService {
     }
 
     public String uploadPhoto(String id, MultipartFile file) {
+        log.info("saving log for user ID: {}", id);
         Contact contact = getContact(id);
         String photoUrl = null;
         contact.setPhotoUrl(photoUrl);

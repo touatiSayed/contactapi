@@ -20,6 +20,9 @@ import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import static io.getarrays.contactapi.constant.Constant.PHOTO_DIRECTORY;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 @Service
 @Slf4j
 @Transactional(rollbackOn = Exception.class)
@@ -27,7 +30,7 @@ import java.util.function.Function;
 public class ContactService {
     private final ContactRepo contactRepo;
 
-    public Page<Contact> getAllContact(int page, int size) {
+    public Page<Contact> getAllContacts(int page, int size) {
         return contactRepo.findAll(PageRequest.of(page, size, Sort.by("name")));
     }
 
@@ -44,39 +47,28 @@ public class ContactService {
     }
 
     public String uploadPhoto(String id, MultipartFile file) {
-        log.info("saving log for user ID: {}", id);
+        log.info("Saving picture for user ID: {}", id);
         Contact contact = getContact(id);
-        String photoUrl = null;
+        String photoUrl = photoFunction.apply(id, file);
         contact.setPhotoUrl(photoUrl);
         contactRepo.save(contact);
         return photoUrl;
     }
 
-    private final Function<String, String> fileExtension = filename ->
-            Optional.ofNullable(filename)
-                    .filter(name -> name.contains("."))
-                    .map(name -> "." + name.substring(name.lastIndexOf('.') + 1))
-                    .orElse(".png");
+    private final Function<String, String> fileExtension = filename -> Optional.of(filename).filter(name -> name.contains("."))
+            .map(name -> "." + name.substring(filename.lastIndexOf(".") + 1)).orElse(".png");
 
     private final BiFunction<String, MultipartFile, String> photoFunction = (id, image) -> {
         String filename = id + fileExtension.apply(image.getOriginalFilename());
         try {
-            Path fileStorageLocation = Paths.get("PHOTO_DIRECTORY").toAbsolutePath().normalize();
-            if (!Files.exists(fileStorageLocation)) {
-                Files.createDirectories(fileStorageLocation);
-            }
-            Files.copy(
-                    image.getInputStream(),
-                    fileStorageLocation.resolve(filename),
-                    StandardCopyOption.REPLACE_EXISTING
-            );
-            return ServletUriComponentsBuilder.fromCurrentContextPath()
-                    .path("/contacts/image/")
-                    .path(filename)
-                    .toUriString();
-        } catch (Exception exception) {
-            throw new RuntimeException("Unable to save image", exception);
+            Path fileStorageLocation = Paths.get(PHOTO_DIRECTORY).toAbsolutePath().normalize();
+            if(!Files.exists(fileStorageLocation)) { Files.createDirectories(fileStorageLocation); }
+            Files.copy(image.getInputStream(), fileStorageLocation.resolve(filename), REPLACE_EXISTING);
+            return ServletUriComponentsBuilder
+                    .fromCurrentContextPath()
+                    .path("/contacts/image/" + filename).toUriString();
+        }catch (Exception exception) {
+            throw new RuntimeException("Unable to save image");
         }
     };
 }
-
